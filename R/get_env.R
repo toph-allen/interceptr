@@ -19,7 +19,7 @@ fail_rmd <- function(missing_vars) {
     paste(missing_vars, collapse = ", "),
     ifelse(
       is_connect(),
-      "Please enter these variable to the right under \"Vars\".",
+      "Please enter these variables in this document's settings panel under \"Vars\".",
       "Please ensure these variables are available"),
     sep = "\n"
   )
