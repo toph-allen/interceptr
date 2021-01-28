@@ -1,0 +1,490 @@
+---
+title: "Connect Diagnostic Bundle Short Report"
+output: html_document
+---
+
+
+```{r opts, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = FALSE
+)
+options(digits = 3)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(pins)
+library(interceptr)
+```
+
+```{r}
+# fake_names <- c("FOO", "BAR")
+# get_environment_vars(fake_names)
+```
+
+```{r get_vars}
+env_vars <- get_env(c("CONNECT_SERVER", "CONNECT_API_KEY"))
+```
+
+
+Please note:
+
+- The data represents only the subset of Connect users who interacted with support and submitted diagnostic bundles. 
+- These bundles are not de-duplicated to account for multiple bundles submitted from the same user.
+
+
+```{r process_funcs}
+discard_after_dash <- function(x) {
+  x1 <- str_split(x, pattern = "-")
+  map_chr(x1, 1)
+}
+
+version_major <- function(x) {
+  x1 <- str_split(x, pattern = "\\.")
+  x2 <- map_chr(x1, 1)
+}
+
+version_minor <- function(x) {
+  x1 <- str_split(x, pattern = "\\.|-")
+  x2 <- map_chr(x1, ~ paste(.x[1:2], collapse = "."))
+  modify_if(x2, ~ str_detect(.x, pattern = "NA"), ~ NA)
+}
+
+version_micro <- function(x) {
+  x1 <- str_split(x, pattern = "\\.|-")
+  x2 <- map_chr(x1, ~ paste(.x[1:3], collapse = "."))
+  modify_if(x2, ~ str_detect(.x, pattern = "NA"), ~ NA)
+}
+
+patch_digit <- function(x) {
+  x0 <- discard_after_dash(x)
+  x1 <- str_split(x0, pattern = "\\.|-")
+  x2 <- map_chr(x1, ~ paste(.x[4], collapse = "."))
+  modify_if(x2, ~ str_detect(.x, pattern = "NA"), ~ "0")
+}
+
+in_gigs <- function(mem_str) {
+  # Returns the memory roughly in gigabytes, multiplying or dividing by
+  # 1000 based on the units in the mem string.
+  units = str_extract(mem_str, "[A-Z]")
+  digits = as.numeric(str_extract(mem_str, "(\\d)+"))
+  if (is.na(units)) {
+    return(NA)
+  }
+  if (units == "T") {
+    digits = digits * 1000
+  } else if (units == "M") {
+    digits = digits / 1000
+  }
+  return(digits)
+}
+```
+
+
+
+
+```{r load_and_process}
+board_register_rsconnect(name = "rsconnect", server = env_vars$CONNECT_SERVER, api_key = env_vars$CONNECT_API_KEY)
+diag_pin <- pin_get(
+  "toph/rsc-diagnostic-bundles-parsed",
+  board = "rsconnect",
+  cache = FALSE
+)
+
+# diag_local <- read_csv("data/summary.csv")
+
+# Some unnecessary parse_[type]() functions in here to handle read.csv() version of
+# bundle summary dataset published from this repo.
+dat <- diag_pin %>%
+  transmute(
+    date = as.Date(date.received),
+    month = floor_date(date, unit = "month"),
+    quarter = floor_date(date, unit = "quarter"), 
+    version = version.connect,
+    version_major = version_major(version.connect),
+    version_minor = version_minor(version.connect),
+    version_micro = version_micro(version.connect),
+    version_patch = discard_after_dash(version.connect),
+    os_version = os_release.version,
+    os_distro = discard_after_dash(os_release.version),
+    cpu_count = as.numeric(cpumodel.count),
+    mem_str = memory.count,
+    mem_gigs = map_dbl(memory.count, in_gigs),
+    docker = docker.used == "yes",
+    internet = internet.available == "yes",
+    config.email_provider.value = recode(parse_character(config.server.emailprovider), .missing = "missing"),
+    config.email_provider.configured = recode(parse_character(config.server.emailprovider),
+                                            none = "none (explicit)",
+                                            print = "configured",
+                                            sendmail = "configured",
+                                            smtp = "configured",
+                                            .missing = "missing"),
+    config.auth_provider = parse_character(config.authentication.provider),
+    across(starts_with("feature_usage"), parse_logical)
+  ) %>%
+  tibble
+```
+
+# Figures
+
+## Number of reports over time
+
+```{r}
+# dat %>%
+#   group_by(month) %>%
+#   summarize(n = n()) %>%
+#   ggplot(aes(x = month, y = n)) +
+#   geom_bar(stat = "identity") +
+#   labs(title = "Number of diagnostic bundles per month")
+
+
+dat %>%
+  group_by(quarter) %>%
+  summarize(n = n()) %>%
+  ggplot(aes(x = quarter, y = n)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Number of diagnostic bundles per quarter")
+```
+
+Most of the following plots will display display properties in terms of the *proportion* of bundles, unless otherwise stated.
+
+## Connect version
+
+```{r}
+# dat %>%
+#   group_by(month) %>%
+#   mutate(month_n = n()) %>%
+#   group_by(month, version_minor, version_micro) %>%
+#   summarize(version_frac = n() / month_n[1]) %>%
+#   ggplot(aes(x = month, fill = version_micro, y = version_frac)) +
+#   geom_col(color = "black", size = 0.25) +
+#   labs(title = "Proportion of Connect micro version by month")
+
+
+dat %>%
+  group_by(quarter) %>%
+  mutate(quarter_n = n()) %>%
+  group_by(quarter, version_minor, version_micro) %>%
+  summarize(version_frac = n() / quarter_n[1]) %>%
+  ggplot(aes(x = quarter, fill = version_micro, y = version_frac)) +
+  geom_col(color = "black", size = 0.25) +
+  labs(title = "Proportion of Connect micro version by quarter")
+
+
+# dat %>%
+#   group_by(month) %>%
+#   mutate(month_n = n()) %>%
+#   group_by(month, version_minor, version_micro) %>%
+#   summarize(version_frac = n() / month_n[1]) %>%
+#   ggplot(aes(x = month, fill = version_micro, y = version_frac)) +
+#   geom_col(color = "black", size = 0.25) +
+#   facet_wrap(~ version_micro) +
+#   theme(legend.position = "none") +
+#   labs(title = "Proportion of Connect micro version by month")
+# 
+# 
+# dat %>%
+#   group_by(month) %>%
+#   mutate(month_n = n()) %>%
+#   group_by(month, version_minor, version_micro, version_patch) %>%
+#   summarize(version_frac = n() / month_n[1]) %>%
+#   ggplot(aes(x = month, fill = version_patch, y = version_frac)) +
+#   geom_col(color = "black", size = 0.25) +
+#   facet_wrap(~ version_micro) +
+#   labs(title = "Proportion of Connect micro version by month (colored by patch)")
+# 
+# 
+# dat %>%
+#   group_by(month) %>%
+#   mutate(month_n = n()) %>%
+#   group_by(month, version_minor, version_micro, version_patch) %>%
+#   summarize(
+#     patch_frac = n() / month_n[1],
+#     patch_digit = patch_digit(version_patch),
+#     ) %>%
+#   ggplot(aes(x = month, fill = version_patch, y = patch_frac)) +
+#   geom_col() +
+#   facet_grid(cols = vars(version_micro), rows = vars(patch_digit)) +
+#   theme(legend.position = "none") +
+#   labs(title = "Proportion of Connect version x patch for each month")
+
+
+# select(dat, date, version_micro) %>%
+#   drop_na() %>%
+#   ggplot(., aes(x = date)) +
+#   geom_density(aes(fill = version_micro), position = "fill") +
+#   labs(title = "Proportion of Connect micro version over time (density plot version)")
+```
+
+## Host OS version and distro
+
+```{r}
+dat %>%
+  ggplot(aes(x = os_distro, fill = os_distro)) +
+  geom_bar(color = "black", size = 0.25) +
+  labs(title = "Total number of bundles submitted from each Distro")
+```
+
+```{r}
+dat %>%
+  group_by(quarter) %>%
+  mutate(quarter_n = n()) %>%
+  group_by(quarter, os_distro) %>%
+  summarize(distro_frac = n() / quarter_n[1]) %>%
+  ggplot(aes(x = quarter, y = distro_frac, fill = os_distro)) +
+  geom_col(color = "black", size = 0.25) +
+  labs(title = "Proportion of bundles submitted from each distro per quarter")
+```
+
+```{r}
+# dat %>%
+#   group_by(quarter, os_distro) %>%
+#   mutate(distro_n = n()) %>%
+#   filter(! os_distro %in% c("12", "9", "linuxmint", NA)) %>%
+#   group_by(quarter, os_distro, os_version) %>%
+#   summarize(
+#     version_freq = n() / unique(distro_n[1])
+#     ) %>%
+#   ggplot(aes(x = quarter, y = version_freq, fill = os_version)) +
+#   geom_col(color = "black", size = 0.25) +
+#   facet_wrap(~ os_distro) +
+#   labs(title = "Version as a proportion of each distro per quarter")
+```
+
+
+## Host hardware
+
+### CPU Count
+
+```{r}
+cpu_breaks_1 <- 2^(1:8)
+cpu_breaks_2 <- 2^(1.5:8.5)
+
+ggplot(dat, aes(x = cpu_count)) +
+  stat_bin(breaks = cpu_breaks_2, color = "black") +
+  scale_x_log10(breaks = c(cpu_breaks_1, cpu_breaks_2), labels = round) +
+  labs(title = "CPU core count")
+```
+
+
+### Memory
+
+```{r}
+mem_breaks_v1 = 2^(1:10)
+mem_breaks_v2 = 2^(1.5:10.5)
+mem_breaks_v3 = c(mem_breaks_v1, mem_breaks_v2)
+
+ggplot(dat, aes(x = mem_gigs)) +
+  stat_bin(breaks = mem_breaks_v2, color = "black") +
+  scale_x_log10(breaks = mem_breaks_v3, labels = round) +
+  labs(title = "System memory in GB")
+```
+
+## Environment
+
+```{r}
+knitr::kable(prop.table(table(dat$docker)), caption = "Running in a Docker container", col.names = NULL)
+
+# ggplot(dat, aes(x = docker)) +
+#   stat_count() +
+#   labs(title = "Running in a Docker container")
+```
+
+```{r}
+knitr::kable(prop.table(table(dat$internet)), caption = "Has internet connectivity", col.names = NULL)
+
+# ggplot(dat, aes(x = internet)) +
+#   stat_count() +
+#   labs(title = "Internet connectivity")
+```
+
+## Feature Usage
+
+```{r}
+# Version 1, just using a histogram
+dat_features <- dat %>%
+  select(month, quarter, starts_with("feature")) %>%
+  rename_with(~ gsub("feature_usage.", "", .x, fixed = TRUE)) %>%
+  gather(key = "feature", value = "used", -month, -quarter)
+
+# dat_features %>%
+#   ggplot(aes(x = month, fill = used)) +
+#   geom_bar(position = "fill") +
+#   facet_wrap(~ feature) +
+#   labs(title = "Monthly proportion of feature usage")
+# 
+# dat_features %>%
+#   filter(!is.na(used)) %>%
+#   ggplot(aes(x = month, fill = used)) +
+#   geom_bar(position = "fill") +
+#   facet_wrap(~ feature) +
+#   labs(title = "Monthly proportion of feature usage (excluding NA)")
+# 
+# dat_features %>%
+#   ggplot(aes(x = quarter, fill = used)) +
+#   geom_bar(position = "fill") +
+#   facet_wrap(~ feature) +
+#   labs(title = "Quarterly proportion of feature usage")
+
+dat_features %>%
+  group_by(quarter, feature) %>%
+  summarize(
+    used_n = sum(used, na.rm = TRUE),
+    used_frac = used_n / n()
+  ) %>%
+  ggplot(aes(x = quarter, y = used_frac, fill = feature)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ feature) +
+  lims(y = c(0, 1)) +
+  theme(legend.position = "none") +
+  labs(title = "Quarterly proportion of bundles reporting usage == TRUE")
+```
+
+## Configuration
+
+### Email provider
+
+Configuration values.
+
+```{r}
+# dat %>%
+#   filter(date > today() - days(91)) %>%
+#   select(config.email_provider.value) %>%
+#   table() %>%
+#   knitr::kable(caption = "Configured email provider in diagnostic bundles from the last quarter")
+
+# dat %>% group_by(month) %>%
+#   mutate(month_n = n()) %>%
+#   group_by(month, config.email_provider.value) %>%
+#   summarize(
+#     provider_frac = n() / month_n[1]
+#   ) %>%
+#   ggplot(aes(x = month, y = provider_frac, fill = config.email_provider.value)) +
+#   geom_col(color = "black", size = 0.25) +
+#   labs(title = "Monthly proportions of email provider config")
+
+dat %>%
+  group_by(quarter) %>%
+  mutate(quarter_n = n()) %>%
+  group_by(quarter, config.email_provider.value) %>%
+  summarize(
+    provider_frac = n() / quarter_n[1]
+  ) %>%
+  ggplot(aes(x = quarter, y = provider_frac, fill = config.email_provider.value)) +
+  geom_col(color = "black", size = 0.25) +
+  labs(title = "Quarterly proportions of email provider config")
+
+# dat %>% group_by(quarter) %>%
+#   select(quarter, config.email_provider.value) %>%
+#   table %>%
+#   knitr::kable(caption = "Quarterly email provider numbers")
+```
+
+We can also recode the data to show whether email provider is configured at all, set as "none", or missing from the configuration file.
+
+```{r}
+# dat %>% group_by(month) %>%
+#   mutate(month_n = n()) %>%
+#   group_by(month, config.email_provider.configured) %>%
+#   summarize(
+#     provider_frac = n() / month_n[1]
+#   ) %>%
+#   ggplot(aes(x = month, y = provider_frac, fill = config.email_provider.configured)) +
+#   geom_col(color = "black", size = 0.25) +
+#   labs(title = "Monthly proportions of email provider configuration status")
+# 
+dat %>%
+  group_by(quarter) %>%
+  mutate(quarter_n = n()) %>%
+  group_by(quarter, config.email_provider.configured) %>%
+  summarize(
+    provider_frac = n() / quarter_n[1]
+  ) %>%
+  ggplot(aes(x = quarter, y = provider_frac, fill = config.email_provider.configured)) +
+  geom_col(color = "black", size = 0.25) +
+  labs(title = "Quarterly proportions of email provider configuration status")
+
+# dat %>% group_by(quarter) %>%
+#   select(quarter, config.email_provider.configured) %>%
+#   table %>%
+#   knitr::kable(caption = "Quarterly numbers of EmailProvider config")
+```
+
+```{r}
+# dat %>% group_by(quarter) %>%
+#   mutate(quarter_n = n()) %>%
+#   group_by(quarter, config.email_provider.configured) %>%
+#   summarize(
+#     provider_frac = n() / quarter_n[1],
+#   ) %>%
+#   group_by(config.email_provider.configured) %>%
+#   mutate(
+#     provider_diff = provider_frac - lag(provider_frac, default = 0)
+#   ) %>%
+#   ggplot(aes(x = quarter, y = provider_diff, fill = config.email_provider.configured)) +
+#   geom_col(color = "black", size = 0.25) +
+#   facet_wrap(~config.email_provider.configured) +
+#   labs(title = "Quarterly change in email provider configuration status") +
+#   guides(fill = guide_legend(title = "Configuration")) +
+#   theme(legend.position = "none")
+
+```
+
+# Auth provider
+
+
+```{r}
+# dat %>%
+#   filter(date > today() - days(91)) %>%
+#   select(config.auth_provider) %>%
+#   table() %>%
+#   knitr::kable(caption = "Configured auth provider in diagnostic bundles from the last quarter")
+# 
+# dat %>% group_by(month) %>%
+#   mutate(month_n = n()) %>%
+#   group_by(month, config.auth_provider) %>%
+#   summarize(
+#     provider_frac = n() / month_n[1]
+#   ) %>%
+#   ggplot(aes(x = month, y = provider_frac, fill = config.auth_provider)) +
+#   geom_col(color = "black", size = 0.25) +
+#   labs(title = "Monthly proportions of auth provider config")
+# 
+dat %>%
+  group_by(quarter) %>%
+  mutate(quarter_n = n()) %>%
+  group_by(quarter, config.auth_provider) %>%
+  summarize(
+    provider_frac = n() / quarter_n[1]
+  ) %>%
+  ggplot(aes(x = quarter, y = provider_frac, fill = config.auth_provider)) +
+  geom_col(color = "black", size = 0.25) +
+  labs(title = "Quarterly proportions of auth provider config")
+
+# dat %>% group_by(quarter) %>%
+#   select(quarter, config.auth_provider) %>%
+#   table %>%
+#   knitr::kable(caption = "Quarterly auth provider numbers")
+```
+
+
+```{r}
+# dat %>% group_by(quarter) %>%
+#   mutate(quarter_n = n()) %>%
+#   group_by(quarter, config.auth_provider) %>%
+#   summarize(
+#     provider_frac = n() / quarter_n[1],
+#   ) %>%
+#   group_by(config.auth_provider) %>%
+#   mutate(
+#     provider_diff = provider_frac - lag(provider_frac, default = 0)
+#   ) %>%
+#   ggplot(aes(x = quarter, y = provider_diff, fill = config.auth_provider)) +
+#   geom_col(color = "black", size = 0.25) +
+#   facet_wrap(~config.auth_provider) +
+#   theme(legend.position = "none") +
+#   labs(title = "Quarterly change in auth provider share of diagnostic bundles")
+```

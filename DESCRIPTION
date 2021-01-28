@@ -2,8 +2,9 @@ Package: interceptr
 Type: Package
 Title: Intercept Environment Errors Before They Happen
 Version: 0.1.0
-Author: Toph Allen <toph.allen@gmail.com>, Bill Sager
-Maintainer: Toph Allen <toph.allen@gmail.com> [aut, cre]
+Authors@R: c(
+    person("Toph", "Allen", email = "toph.allen@gmail.com", role = c("aut", "cre")),
+    person("Bill", "Sager", email = "whs@sager.org", role = c("aut")))
 Description: This package provides alternative ways to do things like load
     environment variables, and fails more gracefully in a variety of conditions.
 License: What license is it under?
