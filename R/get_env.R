@@ -20,7 +20,7 @@ fail_rmd <- function(missing_vars) {
     ifelse(
       is_connect(),
       "Please enter these variables in this document's settings panel under \"Vars\".",
-      "Please ensure these variables are available"),
+      "Please ensure these variables are available."),
     sep = "\n"
   )
   cat(message)
@@ -28,5 +28,18 @@ fail_rmd <- function(missing_vars) {
 }
 
 fail_shiny <- function(missing_vars) {
-  return()
+  error_app <- shinyApp(
+    ui = basicPage(
+      tags$h3("The following environment variables could not be found:"),
+      verbatimTextOutput("text"),
+      tags$h5(ifelse(
+        is_connect(),
+        "Please enter these variables in this document's settings panel under \"Vars\".",
+        "Please ensure these variables are available."))
+    ),
+    server = function(input, output) {
+      output$text <- renderText(paste(missing_vars, sep="", collapse=", "))
+    }
+  )
+  runApp(error_app)
 }
