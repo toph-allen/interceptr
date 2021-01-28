@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+library(interceptr)
 
 env_vars <- get_env(c("CONNECT_SERVER", "CONNECT_API_KEY", "FOO"), context = "shiny")
 

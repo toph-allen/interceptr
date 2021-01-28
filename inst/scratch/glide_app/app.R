@@ -1,5 +1,6 @@
 library(shiny)
 library(shinyglide)
+library(connectapi)
 
 ui <- fixedPage(style = "max-width: 500px;",
                 titlePanel("Simple shinyglide app"),
@@ -7,31 +8,51 @@ ui <- fixedPage(style = "max-width: 500px;",
                 glide(
                     height = "350px",
                     screen(
-                        p("This is a very simple shinyglide application."),
-                        p("Please click on Next to go to the next screen.")
+                        p("Title"),
+                        p("Instructions"),
+                        input$ready <- FALSE
                     ),
                     screen(
-                        p("Please choose a value."),
-                        numericInput("n", "n", value = 10, min = 10)
+                        p("Enter the directory of the content you want to deploy."),
+                        textInput("directory", "Content Directory", value = "", width = "400px"),
+                        textInput("name", "Name (Optional)", value = "", width = "400px"),
+                        textInput("title", "Title", value = "", width = "400px")
                     ),
                     screen(
-                        p("And here is the result."),
-                        plotOutput("plot")
+                        p("Environment Vars for pins"),
+                        textInput("CONNECT_SERVER", "CONNECT_SERVER", value = Sys.getenv("CONNECT_SERVER"), width = "400px"),
+                        textInput("CONNECT_API_KEY", "CONNECT_API_KEY", value = Sys.getenv("CONNECT_API_KEY"), width = "400px"),
+                        next_label = "Deploy",
+                    ),
+                    screen(
+                      output$result %>% poll_task()
                     )
                 )
 )
 
 
 server <- function(input, output, session) {
+  client <- connect()
 
-    output$plot <- renderPlot({
-        hist(
-            rnorm(input$n),
-            main = paste("n =", input$n),
-            xlab = ""
-        )
-    })
-
+  output$result <- function() {
+    if (input$ready) {
+      rsconnect::writeManifest(input$directory)
+      bnd <- bundle_dir(input$directory)
+      mycontent <- deploy(
+        client,
+        bnd,
+        # name = "my-awesome-special-application",
+        title = input$title,
+        # other content settings like access_type, min_procs, etc.
+        .pre_deploy = {
+          env <- get_environment(content)
+          set_environment_new(env,
+                              CONNECT_API_KEY = input$CONNECT_API_KEY,
+                              CONNECT_SERVER = input$CONNECT_SERVER)
+        }
+      )
+    }
+  }
 }
 
 shinyApp(ui, server)

@@ -1,0 +1,4 @@
+Name: Deploy with Env Var
+Description: Deploys with environment vars
+Binding: deployAddin
+Interactive: true
