@@ -9,6 +9,19 @@
 
 library(shiny)
 
+is_connect <- function() {
+    r_config_active <- Sys.getenv("R_CONFIG_ACTIVE")
+    logname <- Sys.getenv("LOGNAME")
+    return (r_config_active == "rsconnect" || logname == "rstudio-connect")
+}
+
+is_connect_string <- function() {
+    if (is_connect()) {
+        return ("Thank you for using RStudio Connect")
+    }
+    return ("")
+}
+
 # return list(
 #  "found" <- list()
 #  "missing" <- list()
@@ -34,21 +47,18 @@ get_environment_vars <- function(var_names) {
             if (is_shiny == TRUE) {
                 return(shinyApp(
                     ui = basicPage(
-                        verbatimTextOutput("text")
+                        tags$h3("The following environment variables could not be found:"),
+                        verbatimTextOutput("text"),
+                        tags$h5(is_connect_string())
                     ),
                     server = function(input, output) {
-                        output$text <- renderText(
-                            paste(
-                                "The following environment variables could not be found:",
-                                missing_vars,
-                                sep=" "
-                            )
-                        )
+                        output$text <- renderText(paste(missing_vars, sep="", collapse=", "))
                     }
                 ))
             } else {
                 print("The following environment variables could not be found:")
                 print(missing_vars)
+                print(is_connect_string())
                 knitr::knit_exit()
             }
         }
