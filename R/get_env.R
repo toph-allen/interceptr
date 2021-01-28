@@ -1,16 +1,6 @@
 get_env <- function(vars) {
-  sys_env <- Sys.getenv()
-  print(sys_env)
-  found_vars <- list()
-  missing_vars <- character()
-
-  for (name in vars) {
-    if (!name %in% names(sys_env)) {
-      missing_vars <- append(missing_vars, name)
-    } else {
-      found_vars[name] <- sys_env[name]
-    }
-  }
+  found_vars <- na.omit(Sys.getenv(vars, unset = NA))
+  missing_vars <- setdiff(vars, names(found_vars))
 
   if (length(missing_vars) > 0) {
     print("The following environment variables could not be found:")
