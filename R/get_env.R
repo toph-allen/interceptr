@@ -8,7 +8,7 @@ get_env <- function(vars = NULL, context = "rmd") {
     if (context == "rmd") {
       fail_rmd(missing_vars)
     } else if (context == "shiny") {
-      fail_shiny(missing)vars
+      fail_shiny(missing_vars)
     }
   }
 }
