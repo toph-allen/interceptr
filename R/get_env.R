@@ -6,22 +6,27 @@ get_env <- function(vars = NULL, context = "rmd") {
     return(as.list(found_vars))
   } else {
     if (context == "rmd") {
-      rmd_missing_vars(missing_vars)
+      fail_rmd(missing_vars)
+    } else if (context == "shiny") {
+      fail_shiny(missing)vars
     }
   }
 }
 
-rmd_missing_vars <- function(missing_vars) {
+fail_rmd <- function(missing_vars) {
   message <- paste(
-    "The following environment variables could not be found:",
-    missing_vars,
+    "Rendering halted because following environment variables could not be found:",
+    paste(missing_vars, collapse = ", "),
     ifelse(
       is_connect(),
-      "Please enter these variable to the right. ->",
+      "Please enter these variable to the right under \"Vars\".",
       "Please ensure these variables are available"),
-    sep = "\n",
-    collapse = ", "
+    sep = "\n"
   )
   cat(message)
   knitr::knit_exit()
+}
+
+fail_shiny <- function(missing_vars) {
+  return()
 }
