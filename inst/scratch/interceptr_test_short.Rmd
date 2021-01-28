@@ -1,0 +1,22 @@
+---
+title: "Connect Diagnostic Bundle Short Report"
+output: html_document
+---
+
+
+```{r opts, include=FALSE}
+# knitr::opts_chunk$set(
+#   warning = FALSE,
+#   message = FALSE,
+#   echo = FALSE
+# )
+# options(digits = 3)
+```
+
+```{r}
+library(interceptr)
+
+env_vars <- get_env(c("CONNECT_SERVER", "CONNECT_API_KEY"))
+
+print(env_vars)
+```
