@@ -43,3 +43,6 @@ docs/
 
 # translation temp files
 po/*~
+
+# generated html files
+inst/scratch/*.html
