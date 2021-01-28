@@ -1,13 +1,14 @@
 get_env <- function(vars) {
   sys_env <- Sys.getenv()
-  vars <- list()
+  print(sys_env)
+  found_vars <- list()
   missing_vars <- character()
 
   for (name in vars) {
     if (!name %in% names(sys_env)) {
       missing_vars <- append(missing_vars, name)
     } else {
-      vars[name] <- sys_env[name]
+      found_vars[name] <- sys_env[name]
     }
   }
 
@@ -17,6 +18,6 @@ get_env <- function(vars) {
     knitr::knit_exit()
     return()
   } else {
-    return(vars)
+    return(found_vars)
   }
 }
