@@ -16,7 +16,7 @@ output: html_document
 ```{r}
 library(interceptr)
 
-env_vars <- get_env(c("CONNECT_SERVER", "CONNECT_API_KEY"))
-
-print(env_vars)
+env_vars <- get_env(c("CONNECT_SERVER", "CONNECT_API_KEY", "FOO"))
 ```
+
+This is text below the chunk.

@@ -17,23 +17,7 @@ options(digits = 3)
 library(tidyverse)
 library(lubridate)
 library(pins)
-library(rsconnect)
-
 library(interceptr)
-
-# library(purrr)
-# library(here)
-# library(fs)
-# map(dir_ls(here("R")), source)
-```
-
-```{r}
-# fake_names <- c("FOO", "BAR")
-# get_environment_vars(fake_names)
-```
-
-```{r get_vars}
-env_vars <- get_env(c("CONNECT_SERVER", "CONNECT_API_KEY"))
 ```
 
 
@@ -90,7 +74,9 @@ in_gigs <- function(mem_str) {
 }
 ```
 
-
+```{r env_vars}
+env_vars <- as.list(Sys.getenv(c("CONNECT_SERVER", "CONNECT_API_KEY")))
+```
 
 
 ```{r load_and_process}
