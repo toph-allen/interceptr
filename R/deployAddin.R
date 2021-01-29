@@ -90,7 +90,7 @@ deployAddin <- function() {
       screen(
         h3("Additional Environment Variables"),
         p("Here is one placeholder you can set - This page really should have a better UX.."),
-        textInput("another_env_var", "MY_SPECIAL_NAME", value = "Honey Bear", width = "400px")
+        textInput("MY_SPECIAL_NAME", "MY_SPECIAL_NAME", value = "Honey Bear", width = "400px")
       ),
       screen(
         h3("Set Advanced Options"),
@@ -149,10 +149,10 @@ deployAddin <- function() {
       show("bundling_msg")
       bnd <- bundle_dir(input$directory)
 
-      env_vars <- list(
+      deploy_env <- list(
         CONNECT_API_KEY = input$CONNECT_API_KEY,
         CONNECT_SERVER = input$CONNECT_SERVER,
-        MY_SPECIAL_NAME = input$another_env_var,
+        MY_SPECIAL_NAME = input$MY_SPECIAL_NAME,
         vanity_url = input$vanity_url,
         min_processes = input$min_processes,
         max_processes = input$max_processes,
@@ -164,26 +164,28 @@ deployAddin <- function() {
       cont <- deploy(
         client,
         bnd,
-        # name = "my-awesome-special-application",
+        name = ifelse(length(input$name > 0), input$name, create_random_name()),
         title = input$title,
         description = input$description,
-        env_vars = env_vars,
+        deploy_env = deploy_env,
         .pre_deploy = {
           env <- get_environment(content)
           set_environment_new(env,
-                              CONNECT_API_KEY = env_vars$CONNECT_API_KEY,
-                              CONNECT_SERVER = env_vars$CONNECT_SERVER,
-                              MY_SPECIAL_NAME = env_vars$MY_SPECIAL_NAME
+                              CONNECT_API_KEY = deploy_env$CONNECT_API_KEY,
+                              CONNECT_SERVER = deploy_env$CONNECT_SERVER,
+                              MY_SPECIAL_NAME = deploy_env$MY_SPECIAL_NAME
           )
-          set_vanity_url(content, env_vars$vanity_url) # "/my-awesome-app"
+          if (length(deploy_env$vanity_url) > 0) {
+            set_vanity_url(content, deploy_env$vanity_url) # "/my-awesome-app"
+          }
           # set_image_path(content, input$image_path) # "./my/local/image.png"
           content$update(
-            min_processes = env_vars$min_processes,
-            max_processes = env_vars$max_processes,
-            max_conns_per_process = env_vars$max_conns_per_process
+            min_processes = deploy_env$min_processes,
+            max_processes = deploy_env$max_processes,
+            max_conns_per_process = deploy_env$max_conns_per_process
           )
         },
-        .pre_deploy_env = list(env_vars = env_vars) # passing in as list
+        .pre_deploy_env = list(deploy_env = deploy_env) # passing in as list
       )
 
       newtask <- ReactiveTask$new(
