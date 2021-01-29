@@ -57,23 +57,49 @@ show_bundling = FALSE
 ui <- fixedPage(
   # style = "max-width: 800px;",
   useShinyjs(),
-  titlePanel("Simple shinyglide app"),
+  titlePanel("New and Improved Publishing Wizard"),
   glide(
     # height = "600px",
     screen(
-      p("Title"),
-      p("Instructions")
+      h3("Publish to RStudio Connect!"),
+      p("This wizard will guide you through the process of publishing your content to the RStudio Connect server.")
     ),
     screen(
-      p("Enter the directory of the content you want to deploy."),
-      textInput("directory", "Content Directory", value = getwd(), width = "400px"),
+      h3("Where is your content located?"),
+      p("Enter the directory on your machine where the content you want to deploy is located."),
+      textInput("directory", "Content Directory", value = getwd(), width = "400px")
+    ),
+    screen(
+      h3("Describe your content"),
+      p("Set the attributes which describe your content on the server."),
       textInput("name", "Name (Optional)", value = "", width = "400px"),
-      textInput("title", "Title", value = "", width = "400px")
+      textInput("title", "Title", value = "", width = "400px"),
+      textInput("description", "Description", value = "", width = "400px"),
+      textInput("vanity_url", "Vanity URL (ex. /my-awesome-app)", value = "", width = "400px"),
+      textInput("image_path", "Image Path on server (ex. /etc/stuff/image.png)", value = "", width = "400px")
     ),
     screen(
-      p("Environment Vars for pins"),
+      h3("Set the Advanced Options"),
+      p("Normally, modifying these values is not necessary, but if you need to, there are here!"),
+      numericInput("min_processes", "Min Number of Processes", value = 0, min = 0, width = "400px"),
+      numericInput("max_processes", "Max Number of Processes", value = 3, min = 1, width = "400px"),
+      numericInput("max_conns_per_process", "Max Connections Per Process", value = 20, min = 0, width = "400px")
+    ),
+    screen(
+      h3("Environment Vars for pins"),
+      p("If you are using pins, then you'll want to set these values. Defaults are coming out of your environment, so they may be correct unless you need something different"),
       textInput("CONNECT_SERVER", "CONNECT_SERVER", value = Sys.getenv("CONNECT_SERVER"), width = "400px"),
       textInput("CONNECT_API_KEY", "CONNECT_API_KEY", value = Sys.getenv("CONNECT_API_KEY"), width = "400px")
+    ),
+    screen(
+      h3("Any additional Environment Variables you rely upon?"),
+      p("Here is one placeholder you can set - This page really should have a better UX.."),
+      textInput("another_env_var", "MY_SPECIAL_NAME", value = "", width = "400px")
+    ),
+    screen(
+      h3("Any diagnostic options?"),
+      p("Connect will analyze your content and produce a diagnostic report if things go bad."),
+      checkboxInput("debug_output", "Output Diagnostic Report for content")
     ),
     screen(
       actionButton("deploy", "Deploy to Connect!"),
@@ -98,7 +124,7 @@ ui <- fixedPage(
     ),
     screen(
       p("You are all done!"),
-      actionButton("close", "Close wizard")
+      actionButton("close", "Close wizard and launch content")
     )
   )
 )
@@ -109,6 +135,7 @@ server <- function(input, output, session) {
   taskItem <- reactiveVal(NULL)
 
   observeEvent(input$close, {
+    taskItem() %>% browse_dashboard()
     stopApp()
   })
 
@@ -121,8 +148,15 @@ server <- function(input, output, session) {
     show("bundling_msg")
     bnd <- bundle_dir(input$directory)
 
-    api_key <- input$CONNECT_API_KEY
-    server <- input$CONNECT_SERVER
+    env_vars <- list(
+      CONNECT_API_KEY = input$CONNECT_API_KEY,
+      CONNECT_SERVER = input$CONNECT_SERVER,
+      MY_SPECIAL_NAME = input$another_env_var,
+      vanity_url = input$vanity_url,
+      min_processes = input$min_processes,
+      max_processes = input$max_processes,
+      max_conns_per_process = input$max_conns_per_process
+    )
 
     show("deploying_msg")
     show("log_label")
@@ -131,14 +165,23 @@ server <- function(input, output, session) {
       bnd,
       # name = "my-awesome-special-application",
       title = input$title,
-      # other content settings like access_type, min_procs, etc.
+      description = input$description,
       .pre_deploy = {
         env <- get_environment(content)
         set_environment_new(env,
-                            CONNECT_API_KEY = "MOqoQUbKQDXc7isdty52Ro9zuWouiCaj",
-                            CONNECT_SERVER = "https://rsc.radixu.com/"
+                            CONNECT_API_KEY = env_vars$CONNECT_API_KEY,
+                            CONNECT_SERVER = env_vars$CONNECT_SERVER,
+                            MY_SPECIAL_NAME = env_vars$MY_SPECIAL_NAME
         )
-      }
+        set_vanity_url(content, env_vars$vanity_url) # "/my-awesome-app"
+        # set_image_path(content, input$image_path) # "./my/local/image.png"
+        content$update(
+          min_processes = env_vars$min_processes,
+          max_processes = env_vars$max_processes,
+          max_conns_per_process = env_vars$max_conns_per_process
+        )
+      },
+      .pre_deploy_env = list(env_vars = env_vars)
     )
 
     newtask <- ReactiveTask$new(
