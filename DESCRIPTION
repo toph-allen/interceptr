@@ -10,3 +10,10 @@ Description: This package provides alternative ways to do things like load
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
+Imports:
+    shiny,
+    shinyjs,
+    shinyglide,
+Remotes:
+    toph-allen/connectapi
+    colearendt/shinytail
