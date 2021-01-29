@@ -164,18 +164,19 @@ deployAddin <- function() {
       cont <- deploy(
         client,
         bnd,
-        name = ifelse(length(input$name > 0), input$name, create_random_name()),
+        name = ifelse(nchar(input$name) > 0, input$name, create_random_name()),
         title = input$title,
         description = input$description,
         deploy_env = deploy_env,
         .pre_deploy = {
+
           env <- get_environment(content)
           set_environment_new(env,
                               CONNECT_API_KEY = deploy_env$CONNECT_API_KEY,
                               CONNECT_SERVER = deploy_env$CONNECT_SERVER,
                               MY_SPECIAL_NAME = deploy_env$MY_SPECIAL_NAME
           )
-          if (length(deploy_env$vanity_url) > 0) {
+          if (nchar(deploy_env$vanity_url) > 0) {
             print("Setting vanity URL")
             print(deploy_env$vanity_url)
             set_vanity_url(content, deploy_env$vanity_url) # "/my-awesome-app"
