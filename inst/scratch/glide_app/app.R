@@ -12,10 +12,10 @@ library(connectapi)
 # API_KEY MOqoQUbKQDXc7isdty52Ro9zuWouiCaj
 
 # readRenviron("../.Renviron.alt")
-Sys.setenv(
-  CONNECT_SERVER = "https://rsc.radixu.com/",
-  CONNECT_API_KEY = "MOqoQUbKQDXc7isdty52Ro9zuWouiCaj"
-)
+# Sys.setenv(
+#   CONNECT_SERVER = "https://rsc.radixu.com/",
+#   CONNECT_API_KEY = "MOqoQUbKQDXc7isdty52Ro9zuWouiCaj"
+# )
 
 # pretty hacky, basically depend on:
 # - storing state / progress in the R6 object
