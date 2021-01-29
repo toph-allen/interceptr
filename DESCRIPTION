@@ -15,5 +15,5 @@ Imports:
     shinyjs,
     shinyglide,
 Remotes:
-    toph-allen/connectapi
+    toph-allen/connectapi,
     colearendt/shinytail
