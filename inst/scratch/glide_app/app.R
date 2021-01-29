@@ -72,10 +72,10 @@ ui <- fixedPage(
     screen(
       h3("Describe your content"),
       p("Set the attributes which describe your content on the server."),
-      textInput("name", "Name (Optional)", value = "", width = "400px"),
-      textInput("title", "Title", value = "", width = "400px"),
-      textInput("description", "Description", value = "", width = "400px"),
-      textInput("vanity_url", "Vanity URL (ex. /my-awesome-app)", value = "", width = "400px"),
+      textInput("name", "Name (Optional)", value = "Your name (must be unique)", width = "400px"),
+      textInput("title", "Title", value = "Give me a title!", width = "400px"),
+      textInput("description", "Description", value = "One of the most amazing apps I have ever done!", width = "400px"),
+      textInput("vanity_url", "Vanity URL (ex. /my-awesome-app)", value = "/my-awesome-app", width = "400px"),
       textInput("image_path", "Image Path on server (ex. /etc/stuff/image.png)", value = "", width = "400px")
     ),
     screen(
@@ -94,7 +94,7 @@ ui <- fixedPage(
     screen(
       h3("Any additional Environment Variables you rely upon?"),
       p("Here is one placeholder you can set - This page really should have a better UX.."),
-      textInput("another_env_var", "MY_SPECIAL_NAME", value = "", width = "400px")
+      textInput("another_env_var", "MY_SPECIAL_NAME", value = "Honey Bear", width = "400px")
     ),
     screen(
       h3("Any diagnostic options?"),
