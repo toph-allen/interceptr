@@ -78,7 +78,7 @@ deployAddin <- function() {
         textInput("title", "Title (Required)", placeholder = "Give me a title!", width = "400px"),
         textInput("name", "Name (Optional, must be unique on RStudio Connect)", placeholder = "unique-content-name", width = "400px"),
         textInput("description", "Description (Optional)", placeholder = "Describe your application", width = "400px"),
-        textInput("vanity_url", "Vanity URL (Optional)", value = "/my-awesome-app", width = "400px"),
+        textInput("vanity_url", "Vanity URL (Optional)", width = "400px"),
         textInput("image_path", "Image Path on Server (ex. /etc/stuff/image.png)", value = "", width = "400px")
       ),
       screen(
@@ -176,6 +176,8 @@ deployAddin <- function() {
                               MY_SPECIAL_NAME = deploy_env$MY_SPECIAL_NAME
           )
           if (length(deploy_env$vanity_url) > 0) {
+            print("Setting vanity URL")
+            print(deploy_env$vanity_url)
             set_vanity_url(content, deploy_env$vanity_url) # "/my-awesome-app"
           }
           # set_image_path(content, input$image_path) # "./my/local/image.png"
