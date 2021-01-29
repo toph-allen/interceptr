@@ -121,8 +121,10 @@ server <- function(input, output, session) {
     show("bundling_msg")
     bnd <- bundle_dir(input$directory)
 
-    api_key <- input$CONNECT_API_KEY
-    server <- input$CONNECT_SERVER
+    env_vars <- list(
+      CONNECT_API_KEY = input$CONNECT_API_KEY,
+      CONNECT_SERVER = input$CONNECT_SERVER
+    )
 
     show("deploying_msg")
     show("log_label")
@@ -131,14 +133,16 @@ server <- function(input, output, session) {
       bnd,
       # name = "my-awesome-special-application",
       title = input$title,
+      env_vars = env_vars,
       # other content settings like access_type, min_procs, etc.
       .pre_deploy = {
         env <- get_environment(content)
         set_environment_new(env,
-                            CONNECT_API_KEY = "MOqoQUbKQDXc7isdty52Ro9zuWouiCaj",
-                            CONNECT_SERVER = "https://rsc.radixu.com/"
+                            CONNECT_API_KEY = env_vars$CONNECT_API_KEY,
+                            CONNECT_SERVER = env_vars$CONNECT_SERVER
         )
-      }
+      },
+      .pre_deploy_env = list(env_vars = env_vars) # passing in as list
     )
 
     newtask <- ReactiveTask$new(
