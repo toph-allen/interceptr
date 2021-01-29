@@ -166,6 +166,7 @@ server <- function(input, output, session) {
       # name = "my-awesome-special-application",
       title = input$title,
       description = input$description,
+      env_vars = env_vars,
       .pre_deploy = {
         env <- get_environment(content)
         set_environment_new(env,
@@ -181,7 +182,7 @@ server <- function(input, output, session) {
           max_conns_per_process = env_vars$max_conns_per_process
         )
       },
-      .pre_deploy_env = list(env_vars = env_vars)
+      .pre_deploy_env = list(env_vars = env_vars) # passing in as list
     )
 
     newtask <- ReactiveTask$new(
