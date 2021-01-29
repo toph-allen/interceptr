@@ -38,7 +38,7 @@ poll_task_reactive <- function(task, doneReactiveVal, wait = 1, interval = 100, 
   connectapi:::validate_R6_class(task, c("Task", "VariantTask"))
   if (!task$finished) {
     invalidateLater(interval)
-    message("Deploying...")
+    # message("Deploying...")
     task_data <- task$get_connect()$task(task$get_task()$task_id, wait = wait,
                                          first = task$first)
     task$finished <- task_data[["finished"]]
@@ -99,7 +99,7 @@ ui <- fixedPage(
     screen(
       h3("Any diagnostic options?"),
       p("Connect will analyze your content and produce a diagnostic report if things go bad."),
-      checkboxInput("debug_output", "Output Diagnostic Report for content")
+      checkboxInput("generate_debug_output", "Output Diagnostic Report for content")
     ),
     screen(
       actionButton("deploy", "Deploy to Connect!"),
@@ -133,6 +133,15 @@ server <- function(input, output, session) {
   streamText <- reactiveVal()
   deploying <- reactiveVal(FALSE)
   taskItem <- reactiveVal(NULL)
+  bundleDir <- reactiveVal(getwd())
+
+  observeEvent(input$generate_debug_output, {
+    if (!is.null(input$generate_debug_output) && input$generate_debug_output == TRUE) {
+      bundleDir(paste0(input$directory, "/../diagnostic"))
+    } else {
+      bundleDir(input$directory)
+    }
+  })
 
   observeEvent(input$close, {
     taskItem() %>% browse_dashboard()
@@ -144,9 +153,11 @@ server <- function(input, output, session) {
     show("init_msg")
     client <- connect()
     show("manifest_msg")
-    rsconnect::writeManifest(input$directory)
+    print("Working with:")
+    print(bundleDir())
+    rsconnect::writeManifest(bundleDir())
     show("bundling_msg")
-    bnd <- bundle_dir(input$directory)
+    bnd <- bundle_dir(bundleDir())
 
     env_vars <- list(
       CONNECT_API_KEY = input$CONNECT_API_KEY,
